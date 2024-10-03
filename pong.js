@@ -1,170 +1,279 @@
-//board
+// Variables globales
 let board;
 let boardWidth = 500;
-let boardHeight = 500;
-let context; 
+let boardHeight = 667;
+let context;
 
-//players
 let playerWidth = 10;
-let playerHeight = 50;
-let playerVelocityY = 0;
+let playerHeight = 40;
+let playerVelocityY = 3;
+
+// Variables pour les images des rounds
+let roundImages = {};
+let currentRoundImage = null;
 
 let player1 = {
-    x : 10,
-    y : boardHeight/2,
+    x: 10,
+    y: boardHeight / 2 - playerHeight / 2,
     width: playerWidth,
     height: playerHeight,
-    velocityY : 0
-}
+    velocityY: 0,
+    roundScore: 0,
+    globalScore: 0
+};
 
 let player2 = {
-    x : boardWidth - playerWidth - 10,
-    y : boardHeight/2,
+    x: boardWidth - playerWidth - 10,
+    y: boardHeight / 2 - playerHeight / 2,
     width: playerWidth,
     height: playerHeight,
-    velocityY : 0
-}
+    velocityY: 0,
+    roundScore: 0,
+    globalScore: 0
+};
 
-//ball
-let ballWidth = 10;
-let ballHeight = 10;
+// Balle
+let ballRadius = 9;
 let ball = {
-    x : boardWidth/2,
-    y : boardHeight/2,
-    width: ballWidth,
-    height: ballHeight,
-    velocityX : 1,
-    velocityY : 2
-}
+    x: boardWidth / 2,
+    y: boardHeight / 2,
+    radius: ballRadius,
+    velocityX: 1.5, // Augmentation de la vitesse initiale
+    velocityY: 1.5
+};
 
-let player1Score = 0;
-let player2Score = 0;
+let currentRound = 1;
+let isRoundStarting = true;
+let roundStartTime = 0;
+let gameEnded = false;
 
-window.onload = function() {
+window.onload = function () {
     board = document.getElementById("board");
     board.height = boardHeight;
     board.width = boardWidth;
-    context = board.getContext("2d"); //used for drawing on the board
+    context = board.getContext("2d");
 
-    //draw initial player1
-    context.fillStyle="skyblue";
-    context.fillRect(player1.x, player1.y, playerWidth, playerHeight);
-
+    loadRoundImages(); // Charger les images des rounds
+    startNewRound();
     requestAnimationFrame(update);
-    document.addEventListener("keyup", movePlayer);
+    document.addEventListener("keydown", keyDownHandler);
+    document.addEventListener("keyup", keyUpHandler);
+};
+
+// Charger les images pour chaque round
+function loadRoundImages() {
+    for (let i = 1; i <= 5; i++) { 
+        let img = new Image();
+        img.src = "round" + i + ".png"; 
+        roundImages[i] = img;
+    }
 }
 
 function update() {
     requestAnimationFrame(update);
     context.clearRect(0, 0, board.width, board.height);
 
-    // player1
-    context.fillStyle = "skyblue";
-    let nextPlayer1Y = player1.y + player1.velocityY;
-    if (!outOfBounds(nextPlayer1Y)) {
-        player1.y = nextPlayer1Y;
-    }
-    // player1.y += player1.velocityY;
-    context.fillRect(player1.x, player1.y, playerWidth, playerHeight);
+    if (isRoundStarting) {
+        currentRoundImage = roundImages[currentRound];
+        if (currentRoundImage) {
+            context.drawImage(currentRoundImage, 0, 0, boardWidth, boardHeight);
+        }
 
-    // player2
-    let nextPlayer2Y = player2.y + player2.velocityY;
-    if (!outOfBounds(nextPlayer2Y)) {
-        player2.y = nextPlayer2Y;
+        if (Date.now() - roundStartTime > 2000) {
+            isRoundStarting = false;
+        }
+        return;
     }
-    // player2.y += player2.velocityY;
+
+    // Fin du jeu
+    if (gameEnded) {
+        return;
+    }
+
+    // Déplacement des raquettes
+    player1.y += player1.velocityY;
+    player2.y += player2.velocityY;
+
+    // Limiter les raquettes au cadre
+    player1.y = Math.max(Math.min(player1.y, boardHeight - playerHeight), 0);
+    player2.y = Math.max(Math.min(player2.y, boardHeight - playerHeight), 0);
+
+    // Dessiner les raquettes
+    context.fillStyle = "red";
+    context.fillRect(player1.x, player1.y, playerWidth, playerHeight);
     context.fillRect(player2.x, player2.y, playerWidth, playerHeight);
 
-    // ball
-    context.fillStyle = "white";
+    // Déplacement de la balle
     ball.x += ball.velocityX;
     ball.y += ball.velocityY;
-    context.fillRect(ball.x, ball.y, ballWidth, ballHeight);
 
-    if (ball.y <= 0 || (ball.y + ballHeight >= boardHeight)) { 
-        // if ball touches top or bottom of canvas
-        ball.velocityY *= -1; //reverse direction
+    // Dessiner la balle
+    context.fillStyle = "black";
+    context.beginPath();
+    context.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    context.fill();
+
+    // Rebondir sur le haut/bas du cadre
+    if (ball.y - ball.radius <= 0 || ball.y + ball.radius >= boardHeight) {
+        ball.velocityY *= -1;
     }
 
-    // if (ball.y <= 0) { 
-    //     // if ball touches top of canvas
-    //     ball.velocityY = 2; //go down
-    // }
-    // else if (ball.y + ballHeight >= boardHeight) {
-    //     // if ball touches bottom of canvas
-    //     ball.velocityY = -2; //go up
-    // }
-
-    //bounce the ball back
+    // Vérifier les collisions avec les raquettes
     if (detectCollision(ball, player1)) {
-        if (ball.x <= player1.x + player1.width) { //left side of ball touches right side of player 1 (left paddle)
-            ball.velocityX *= -1;   // flip x direction
-        }
-    }
-    else if (detectCollision(ball, player2)) {
-        if (ball.x + ballWidth >= player2.x) { //right side of ball touches left side of player 2 (right paddle)
-            ball.velocityX *= -1;   // flip x direction
-        }
+        ball.velocityX *= -1;
+        ball.x = player1.x + player1.width + ball.radius;
+    } else if (detectCollision(ball, player2)) {
+        ball.velocityX *= -1;
+        ball.x = player2.x - ball.radius;
     }
 
-    //game over
-    if (ball.x < 0) {
-        player2Score++;
-        resetGame(1);
-    }
-    else if (ball.x + ballWidth > boardWidth) {
-        player1Score++;
-        resetGame(-1);
+    // Vérifier si la balle sort du cadre 
+    if (ball.x - ball.radius < 0) {
+        player2.roundScore++;
+        resetBall();
+        resetPlayers();
+    } else if (ball.x + ball.radius > boardWidth) {
+        player1.roundScore++;
+        resetBall();
+        resetPlayers();
     }
 
-    //score
-    context.font = "45px sans-serif";
-    context.fillText(player1Score, boardWidth/5, 45);
-    context.fillText(player2Score, boardWidth*4/5 - 45, 45);
+    // Vérifier si un joueur a gagné le round
+    if (player1.roundScore >= 3 || player2.roundScore >= 3) {
+        endRound();
+    }
 
-    // draw dotted line down the middle
-    for (let i = 10; i < board.height; i += 25) { //i = starting y Position, draw a square every 25 pixels down
-        // (x position = half of boardWidth (middle) - 10), i = y position, width = 5, height = 5
-        context.fillRect(board.width / 2 - 10, i, 5, 5); 
+    // Afficher les scores et les informations
+    displayScores();
+}
+
+function resetBall() {
+    ball.x = boardWidth / 2;
+    ball.y = boardHeight / 2;
+
+    // Générer une direction aléatoire pour la balle
+    let randomDirectionX = Math.random() < 0.5 ? -1 : 1;
+    let randomDirectionY = Math.random() < 0.5 ? -1 : 1;  
+
+    ball.velocityX = 1.5;
+    ball.velocityY = 1.5;
+}
+
+function resetPlayers() {
+    player1.x = 10;
+    player1.y = boardHeight / 2 - playerHeight / 2;
+    player2.x = boardWidth - playerWidth - 10;
+    player2.y = boardHeight / 2 - playerHeight / 2;
+}
+
+function startNewRound() {
+    player1.roundScore = 0;
+    player2.roundScore = 0;
+    roundStartTime = Date.now();
+    isRoundStarting = true;
+    resetBall();
+}
+
+function endRound() {
+    if (player1.roundScore >= 3) {
+        player1.globalScore += 1;
+    } else {
+        player2.globalScore += 1; 
+    }
+
+    if (player1.globalScore >= 2 || player2.globalScore >= 2) {
+        // afficher le bouton "Reset"
+        gameEnded = true;
+        createResetButton();
+        return;
+    }
+
+    currentRound++;
+    startNewRound();
+}
+
+function createResetButton() {
+    let resetButton = document.createElement("button");
+    resetButton.innerText = "REPLAY";
+    
+    // Appliquer du style au bouton
+    resetButton.style.position = "absolute";
+    resetButton.style.top = "70%";
+    resetButton.style.left = "50%";
+    resetButton.style.transform = "translateX(-50%)";
+    resetButton.style.padding = "15px 30px"; 
+    resetButton.style.fontSize = "22px";  
+    resetButton.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";  
+    resetButton.style.color = "white"; 
+    resetButton.style.backgroundColor = "black"; 
+    resetButton.style.border = "none";
+    resetButton.style.borderRadius = "10px"; 
+    resetButton.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.2)"; 
+    resetButton.style.cursor = "pointer";
+    resetButton.style.transition = "background-color 0.3s, box-shadow 0.3s";  
+    
+    resetButton.addEventListener("mouseover", function() {
+        resetButton.style.backgroundColor = "#0056b3";  
+        resetButton.style.boxShadow = "0 6px 14px rgba(0, 0, 0, 0.3)"; 
+    });
+    
+    resetButton.addEventListener("mouseout", function() {
+        resetButton.style.backgroundColor = "black";  
+        resetButton.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.2)"; 
+    });
+
+    // Ajouter le bouton au document
+    document.body.appendChild(resetButton);
+
+    // Rafraîchir la page lorsqu'on clique sur le bouton
+    resetButton.addEventListener("click", function() {
+        location.reload();
+    });
+}
+
+
+function keyDownHandler(e) {
+    if (e.code === "KeyW") {
+        player1.velocityY = -playerVelocityY;
+    } else if (e.code === "KeyS") {
+        player1.velocityY = playerVelocityY;
+    }
+
+    if (e.code === "ArrowUp") {
+        player2.velocityY = -playerVelocityY;
+    } else if (e.code === "ArrowDown") {
+        player2.velocityY = playerVelocityY;
     }
 }
 
-function outOfBounds(yPosition) {
-    return (yPosition < 0 || yPosition + playerHeight > boardHeight);
+function detectCollision(ball, player) {
+    return ball.x - ball.radius < player.x + player.width &&
+        ball.x + ball.radius > player.x &&
+        ball.y - ball.radius < player.y + player.height &&
+        ball.y + ball.radius > player.y;
 }
 
-function movePlayer(e) {
-    //player1
-    if (e.code == "KeyW") {
-        player1.velocityY = -3;
-    }
-    else if (e.code == "KeyS") {
-        player1.velocityY = 3;
-    }
+function displayScores() {
+    // Afficher les noms des joueurs (Player 1, Player 2)
+    context.font = "bold 30px Arial"; 
+    context.fillStyle = "#FF0000";  
+    context.textAlign = "center";  
+    context.fillText("Player 1", boardWidth / 5, 50); 
+    context.fillStyle = "#0000FF"; 
+    context.fillText("Player 2", boardWidth * 4 / 5, 50); 
+   
+    context.font = "bold 50px Arial"; 
+    context.fillStyle = "#000000"; 
+    context.fillText(player1.roundScore, boardWidth / 5, 120); 
+    context.fillText(player2.roundScore, boardWidth * 4 / 5, 120); 
 
-    //player2
-    if (e.code == "ArrowUp") {
-        player2.velocityY = -3;
-    }
-    else if (e.code == "ArrowDown") {
-        player2.velocityY = 3;
-    }
+    // Afficher les scores globaux 
+    context.font = "30px Arial";  
+    context.fillStyle = "#FF0000";  
+    context.fillText(player1.globalScore + "/2", boardWidth / 5, boardHeight - 30); 
+    context.fillStyle = "#0000FF"; 
+    context.fillText(player2.globalScore + "/2", boardWidth * 4 / 5, boardHeight - 30);
+
 }
 
-function detectCollision(a, b) {
-    return a.x < b.x + b.width &&   //a's top left corner doesn't reach b's top right corner
-           a.x + a.width > b.x &&   //a's top right corner passes b's top left corner
-           a.y < b.y + b.height &&  //a's top left corner doesn't reach b's bottom left corner
-           a.y + a.height > b.y;    //a's bottom left corner passes b's top left corner
-}
-
-function resetGame(direction) {
-    ball = {
-        x : boardWidth/2,
-        y : boardHeight/2,
-        width: ballWidth,
-        height: ballHeight,
-        velocityX : direction,
-        velocityY : 2
-    }
-}
+  

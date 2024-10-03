@@ -1,9 +1,14 @@
 body {
     text-align: center;
+    padding-top: 30px;
+    background: linear-gradient(to right, white, lightgray, gray, darkgray, rgb(205, 205, 205));
+
 }
 
 #board {
-    background-color: black;
-    border-top: 5px solid skyblue;
-    border-bottom: 5px solid skyblue;
+    background-image: url("result_Design sans titre (1).png");
+    border-top: 5px solid rgb(4, 4, 4);
+    border-bottom: 5px solid rgb(0, 0, 0);
+    border-left: 5px solid rgb(4, 4, 4);
+    border-right: 5px solid rgb(4, 4, 4);
 }
