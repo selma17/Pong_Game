@@ -1,0 +1,53 @@
+body {
+    text-align: center;
+    display: flex;
+    flex-direction: column; 
+    align-items: center;
+    padding-top: 2vh; 
+    padding-left: 2vw; 
+    padding-right: 2vw;
+    background: linear-gradient(to right, white, lightgray, gray, darkgray, rgb(205, 205, 205));
+    height: 100vh;
+    margin: 0; 
+    overflow-y: hidden;
+}
+
+#board {
+    background-image: url("result_Design sans titre (1).png");
+    background-position: center;
+    background-repeat: no-repeat; 
+    background-size: cover;
+    border-top: 5px solid rgb(4, 4, 4);
+    border-bottom: 5px solid rgb(0, 0, 0);
+    border-left: 5px solid rgb(4, 4, 4);
+    border-right: 5px solid rgb(4, 4, 4);
+    display: flex;
+    justify-content: center; 
+    align-items: center;
+    width: 65vh; 
+    height: 100vh; 
+    max-width: 100%;
+}
+
+
+@media (max-width: 768px) {
+    body {
+        padding-top: 1vh;
+        padding-left: 1vw;
+        padding-right: 1vw;
+    }
+    
+    #board {
+        width: 65vw; 
+        height: 100vh; 
+        background-size: cover; 
+    }
+}
+
+@media (max-width: 480px) {
+    #board {
+        width: 100vw; 
+        height: 100vh;
+        background-size: cover; 
+    }
+}
